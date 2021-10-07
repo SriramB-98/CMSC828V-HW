@@ -12,7 +12,7 @@ Ntrain = nt*nt; % the number of training points
 %% initial guess for parameters
 % N = 10; % the number of hidden nodes (neurons)
 npar = 4*N; % the total number of parameters
-w = ones(npar,1); % initially all parameters are set to 1
+w = rand(npar,1); % initially all parameters are set to 1
 %%
 indices = randperm(Ntrain);
 indices = indices(1:batch_size);
@@ -29,11 +29,11 @@ fall = zeros(iter_max+1,0);
 norg(1) = nor;
 fall(1) = f;
 % TODO: DEFINE STEPSIZE 
-stepsize = 0.4;
+stepsize = 0.05;
 while nor > tol && iter < iter_max
     
     % TODO: insert the gradient descend algorithm here 
-    w = w - (stepsize*(iter+1)^0.05/(1 + 1e-5*iter^2))*g; %/(iter+1)^0.55
+    w = w - (stepsize*(iter+1)^0.55/(1+1e-5*iter^2))*g; %/(iter+1)^0.55
     
     indices = randperm(Ntrain);
     indices = indices(1:batch_size);
@@ -42,9 +42,7 @@ while nor > tol && iter < iter_max
     g = J'*r/batch_size;
     nor = norm(g);
     
-    if mod(iter, 20) == 0 
-        fprintf('iter %d: f = %d, norg = %d\n',iter,f,nor);
-    end
+    fprintf('iter %d: f = %d, norg = %d\n',iter,f,nor);
     iter = iter + 1;
     norg(iter+1) = nor;
     fall(iter+1) = f;
@@ -73,6 +71,7 @@ sol = A(xm,ym) + B.*NNfun;
 esol = exact_sol(xm,ym);
 err = sol - esol;
 fprintf('max|err| = %d, L2 err = %d\n',max(max(abs(err))),norm(err(:)));
+fprintf(fopen('SGD_metrics.text','w'), 'max|err| = %d, L2 err = %d\n',max(max(abs(err))),norm(err(:)));
 
 %
 figure(1);clf;
@@ -95,6 +94,7 @@ xlabel('x','Fontsize',fsz);
 ylabel('y','Fontsize',fsz);
 saveas(gcf,'SGD_error.png');
 
+pause(3);
 %
 figure(3);clf;
 subplot(2,1,1);
@@ -111,6 +111,8 @@ grid;
 set(gca,'YScale','log','Fontsize',fsz);
 xlabel('k','Fontsize',fsz);
 ylabel('|| grad f||','Fontsize',fsz);
+saveas(gcf,'stochastic_GD_convergence.png');
+
 end
 
 %% the objective function

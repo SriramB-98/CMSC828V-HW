@@ -1,4 +1,4 @@
-function [fall,norg] = GD(nt,N,tol,iter_max)
+function [fall,norg] = NAG(nt,N,tol,iter_max)
 fsz = 16; % fontsize
 %% setup training mesh
 t = linspace(0,1,nt+2);
@@ -11,40 +11,41 @@ Ntrain = nt*nt; % the number of training points
 %% initial guess for parameters
 % N = 10; % the number of hidden nodes (neurons)
 npar = 4*N; % the total number of parameters
-w = rand(npar,1); % initially all parameters are set to 1
-%%
-[r,J] = Res_and_Jac(w,xy);
-f = F(r);
-g = J'*r/Ntrain;
-nor = norm(g);
-fprintf('Initially: f = %d, nor(g) = %d\n',f,nor); 
+
 %% The trust region BFGS method
 tic % start measuring the CPU time
-iter = 0;
 norg = zeros(iter_max+1,0);
 fall = zeros(iter_max+1,0);
-norg(1) = nor;
-fall(1) = f;
-% TODO: DEFINE STEPSIZE 
-stepsize = 0.3;
+
+wx = rand(npar,1); 
+wy = wx;
+iter = 1;
+nor = tol+1;
+alpha = 0.005;
 while nor > tol && iter < iter_max
     
-    % TODO: insert the gradient descend algorithm here 
-    w = w - (stepsize)*g; %*(iter+1)^0.05
+    mu = 1 - 3/(5 + iter); 
     
-    [r,J] = Res_and_Jac(w,xy);
+    [r,J] = Res_and_Jac(wy,xy);
     f = F(r);
     g = J'*r/Ntrain;
     nor = norm(g);
+
+    wx_new = wy - alpha*g;
     
+    wy_new = (1 + mu)*wx_new - mu*wx; 
+    
+    wx = wx_new;
+    wy = wy_new;
     fprintf('iter %d: f = %d, norg = %d\n',iter,f,nor);
+    norg(iter) = nor;
+    fall(iter) = f;
     iter = iter + 1;
-    norg(iter+1) = nor;
-    fall(iter+1) = f;
 end
 fprintf('iter # %d: f = %.14f, |df| = %.4e\n',iter,f,nor);
 cputime = toc;
 fprintf('CPUtime = %d, iter = %d\n',cputime,iter);
+w = wx_new;
 %% visualize the solution
 nt = 101;
 t = linspace(0,1,nt);
@@ -66,45 +67,47 @@ sol = A(xm,ym) + B.*NNfun;
 esol = exact_sol(xm,ym);
 err = sol - esol;
 fprintf('max|err| = %d, L2 err = %d\n',max(max(abs(err))),norm(err(:)));
-fprintf(fopen('GD_metrics.text','w'), 'max|err| = %d, L2 err = %d\n',max(max(abs(err))),norm(err(:)));
+fprintf(fopen('NAG_metrics.text','w'), 'max|err| = %d, L2 err = %d\n',max(max(abs(err))),norm(err(:)));
 
 %
 figure(1);clf;
 contourf(t,t,sol,linspace(min(min(sol)),max(max(sol)),20));
 colorbar;
 set(gca,'Fontsize',fsz);
-title('Computed solution from GD');
+title('Computed solution from NAG');
 xlabel('x','Fontsize',fsz);
 ylabel('y','Fontsize',fsz);
-saveas(gcf,'GD_solution.png');
+saveas(gcf,'NAG_solution.png');
 
 %
 figure(2);clf;
 contourf(t,t,err,linspace(min(min(err)),max(max(err)),20));
 colorbar;
 set(gca,'Fontsize',fsz);
-title('Error of GD w.r.t exact solution');
+title('Error of NAG w.r.t exact solution');
 xlabel('x','Fontsize',fsz);
 ylabel('y','Fontsize',fsz);
-saveas(gcf,'GD_error.png');
+saveas(gcf,'NAG_error.png');
 
+pause(3);
 %
 figure(3);clf;
 subplot(2,1,1);
 fall(iter+2:end) = [];
-plot((1:iter+1)',fall,'Linewidth',2,'Marker','.','Markersize',20);
+
+plot((1:iter-1)',fall,'Linewidth',2,'Marker','.','Markersize',20);
 grid;
 set(gca,'YScale','log','Fontsize',fsz);
 xlabel('k','Fontsize',fsz);
 ylabel('f','Fontsize',fsz);
 subplot(2,1,2);
 norg(iter+2:end) = [];
-plot((1:iter+1)',norg,'Linewidth',2,'Marker','.','Markersize',20);
+plot((1:iter-1)',norg,'Linewidth',2,'Marker','.','Markersize',20);
 grid;
 set(gca,'YScale','log','Fontsize',fsz);
 xlabel('k','Fontsize',fsz);
 ylabel('|| grad f||','Fontsize',fsz);
-saveas(gcf,'GD_convergence.png');
+saveas(gcf,'NAG_convergence.png');
 end
 
 %% the objective function
